@@ -1,0 +1,314 @@
+// Restaurant — QR Ordering System
+// Stack: NestJS + TypeORM + MySQL 8
+// Docs: https://dbml.dbdiagram.io/docs
+
+// ─────────────────────────────────────────
+// 1. AUTH
+// ─────────────────────────────────────────
+
+Table users {
+  id            varchar(36)  [primary key]
+  username      varchar(255) [unique, not null]
+  email         varchar(255) [unique, note: 'nullable']
+  phone         varchar(20)  [unique, note: 'nullable']
+  password_hash text         [note: 'nullable']
+  full_name     varchar(150) [not null]
+  is_active     boolean      [default: true]
+  created_at    datetime
+  updated_at    datetime
+}
+
+Table user_roles {
+  id         varchar(36) [primary key]
+  user_id    varchar(36) [not null]
+  role       varchar(20) [not null, note: 'enum: owner | manager | cashier | waiter | kitchen']
+  is_active  boolean     [default: true]
+  created_at datetime
+
+  indexes {
+    (user_id, role) [unique]
+  }
+}
+
+Table refresh_tokens {
+  id         varchar(36) [primary key]
+  user_id    varchar(36) [not null]
+  token_hash text        [not null]
+  expires_at datetime
+  revoked_at datetime    [note: 'nullable']
+  created_at datetime
+}
+
+Ref: user_roles.user_id > users.id
+Ref: refresh_tokens.user_id > users.id
+
+// ─────────────────────────────────────────
+// 2. BÀN & GUEST
+// ─────────────────────────────────────────
+
+Table tables {
+  id            varchar(36)  [primary key]
+  table_code    varchar(50)  [unique, not null, note: 'A1, B2...']
+  table_name    varchar(100) [not null]
+  capacity      int
+  status        varchar(20)  [default: 'available', note: 'enum: available | occupied | reserved | disabled']
+  qr_code_value varchar(255) [unique, not null]
+  is_active     boolean      [default: true]
+
+  indexes {
+    status
+    qr_code_value
+  }
+}
+
+Table guest_sessions {
+  id               varchar(36)  [primary key]
+  table_id         varchar(36)  [not null]
+  guest_token_hash varchar(255) [unique, not null]
+  expires_at       datetime
+  closed_at        datetime     [note: 'nullable']
+  created_at       datetime
+}
+
+Ref: guest_sessions.table_id > tables.id
+
+// ─────────────────────────────────────────
+// 3. MENU
+// ─────────────────────────────────────────
+
+Table menu_categories {
+  id            varchar(36)  [primary key]
+  name          varchar(120) [not null]
+  display_order int          [default: 0]
+  is_active     boolean      [default: true]
+}
+
+Table menu_items {
+  id            varchar(36)   [primary key]
+  category_id   varchar(36)   [not null]
+  name          varchar(200)  [not null]
+  description   text          [note: 'nullable']
+  image_url     text          [note: 'nullable']
+  price         decimal(12,2) [not null, note: 'giá per item']
+  is_available  boolean       [default: true]
+  is_best_seller boolean      [default: false]
+  is_new        boolean       [default: false]
+  is_promo      boolean       [default: false]
+  display_order int           [default: 0]
+  created_at    datetime
+  updated_at    datetime
+}
+
+Ref: menu_items.category_id > menu_categories.id
+
+// ─────────────────────────────────────────
+// 4. COMBO / BUFFET
+// ─────────────────────────────────────────
+
+Table combos {
+  id          varchar(36)   [primary key]
+  name        varchar(200)  [not null, note: 'VD: Combo Lẩu 1 người, Buffet Nướng 2 tiếng']
+  description text          [note: 'nullable']
+  price       decimal(12,2) [not null, note: 'giá mỗi người']
+  valid_hours int           [note: 'nullable — null = không giới hạn giờ']
+  is_active   boolean       [default: true]
+  created_at  datetime
+  updated_at  datetime
+}
+
+Table combo_items {
+  id           varchar(36) [primary key]
+  combo_id     varchar(36) [not null]
+  menu_item_id varchar(36) [not null]
+  qty_limit    int         [note: 'nullable — null = không giới hạn; số = giới hạn/người/phiên']
+
+  indexes {
+    (combo_id, menu_item_id) [unique]
+  }
+}
+
+Ref: combo_items.combo_id > combos.id
+Ref: combo_items.menu_item_id > menu_items.id
+
+// ─────────────────────────────────────────
+// 5. ORDERING
+// ─────────────────────────────────────────
+
+Table dining_sessions {
+  id                 varchar(36) [primary key]
+  table_id           varchar(36) [not null]
+  guest_session_id   varchar(36) [note: 'nullable']
+  opened_by_user_id  varchar(36) [note: 'nullable']
+  started_at         datetime
+  ended_at           datetime    [note: 'nullable']
+  is_active          boolean     [default: true]
+
+  indexes {
+    (table_id, is_active)
+  }
+}
+
+Table dining_session_combos {
+  id                  varchar(36)   [primary key]
+  dining_session_id   varchar(36)   [not null]
+  combo_id            varchar(36)   [not null]
+  person_count        int           [not null, note: 'số người mua combo này']
+  unit_price_snapshot decimal(12,2) [not null, note: 'giá combo lúc mua']
+  started_at          datetime
+  expires_at          datetime      [note: 'nullable — null nếu combo không giới hạn giờ']
+
+  indexes {
+    dining_session_id
+    expires_at
+  }
+}
+
+Table orders {
+  id                 varchar(36) [primary key]
+  dining_session_id  varchar(36) [not null]
+  order_type         varchar(20) [not null, note: 'enum: combo | per_item']
+  session_combo_id   varchar(36) [note: 'nullable — chỉ điền nếu order_type = combo']
+  created_by_user_id varchar(36) [note: 'nullable — null nếu khách tự gọi']
+  status             varchar(20) [default: 'pending', note: 'enum: pending | confirmed | cooking | served | cancelled']
+  note               text        [note: 'nullable']
+  created_at         datetime
+  updated_at         datetime
+
+  indexes {
+    (dining_session_id, status)
+    session_combo_id
+  }
+}
+
+Table order_items {
+  id                  varchar(36)   [primary key]
+  order_id            varchar(36)   [not null]
+  menu_item_id        varchar(36)   [not null]
+  item_name_snapshot  varchar(200)  [not null]
+  unit_price_snapshot decimal(12,2) [not null, note: '0 nếu covered by combo']
+  qty                 int           [not null]
+  is_covered_by_combo boolean       [not null, note: 'true = trong combo, false = tính tiền']
+  note                text          [note: 'nullable']
+  status              varchar(20)   [default: 'pending']
+  created_at          datetime
+
+  indexes {
+    (order_id, status)
+    is_covered_by_combo
+  }
+}
+
+Table order_events {
+  id                 varchar(36) [primary key]
+  order_id           varchar(36) [not null]
+  from_status        varchar(20) [note: 'nullable']
+  to_status          varchar(20) [not null]
+  changed_by_user_id varchar(36) [note: 'nullable']
+  changed_at         datetime
+}
+
+Ref: dining_sessions.table_id > tables.id
+Ref: dining_sessions.guest_session_id > guest_sessions.id
+Ref: dining_sessions.opened_by_user_id > users.id
+Ref: dining_session_combos.dining_session_id > dining_sessions.id
+Ref: dining_session_combos.combo_id > combos.id
+Ref: orders.dining_session_id > dining_sessions.id
+Ref: orders.session_combo_id > dining_session_combos.id
+Ref: orders.created_by_user_id > users.id
+Ref: order_items.order_id > orders.id
+Ref: order_items.menu_item_id > menu_items.id
+Ref: order_events.order_id > orders.id
+Ref: order_events.changed_by_user_id > users.id
+
+// ─────────────────────────────────────────
+// 6. BILLING & SUPPORT
+// ─────────────────────────────────────────
+
+Table bills {
+  id                varchar(36)   [primary key]
+  dining_session_id varchar(36)   [unique, not null]
+  combo_total       decimal(12,2) [not null, note: 'sum of person_count × unit_price_snapshot']
+  per_item_total    decimal(12,2) [not null, note: 'tổng tiền món ngoài combo']
+  vat_amount        decimal(12,2) [default: 0]
+  discount_amount   decimal(12,2) [default: 0]
+  total_amount      decimal(12,2) [not null, note: 'combo_total + per_item_total + vat - discount']
+  status            varchar(20)   [default: 'open', note: 'enum: open | paid | voided']
+  opened_at         datetime
+  closed_at         datetime      [note: 'nullable']
+
+  indexes {
+    dining_session_id
+    status
+  }
+}
+
+Table payments {
+  id              varchar(36)   [primary key]
+  bill_id         varchar(36)   [not null]
+  method          varchar(20)   [not null, note: 'enum: cash | bank_transfer | qr_banking']
+  amount          decimal(12,2) [not null]
+  provider_txn_id varchar(120)  [note: 'nullable']
+  paid_at         datetime      [note: 'nullable']
+  created_at      datetime
+}
+
+Table service_calls {
+  id                varchar(36) [primary key]
+  table_id          varchar(36) [not null]
+  dining_session_id varchar(36) [note: 'nullable']
+  call_type         varchar(50) [not null, note: 'ice | cleanup | request_bill | other']
+  note              text        [note: 'nullable']
+  status            varchar(30) [default: 'new']
+  created_at        datetime
+  resolved_at       datetime    [note: 'nullable']
+
+  indexes {
+    (table_id, status)
+  }
+}
+
+Ref: bills.dining_session_id > dining_sessions.id
+Ref: payments.bill_id > bills.id
+Ref: service_calls.table_id > tables.id
+Ref: service_calls.dining_session_id > dining_sessions.id
+
+// ─────────────────────────────────────────
+// 7. COUPONS
+// ─────────────────────────────────────────
+
+Table coupons {
+  id                  varchar(36)   [primary key]
+  code                varchar(50)   [unique, not null, note: 'mã khách nhập, VD: WELCOME10']
+  description         varchar(255)  [note: 'nullable']
+  discount_type       varchar(10)   [not null, note: 'enum: percent | fixed']
+  discount_value      decimal(12,2) [not null, note: '10 = giảm 10% hoặc 10.000đ']
+  min_order_amount    decimal(12,2) [note: 'nullable — bill tối thiểu mới được dùng']
+  max_discount_amount decimal(12,2) [note: 'nullable — trần giảm tối đa, chỉ dùng khi type=percent']
+  total_limit         int           [note: 'nullable — null = không giới hạn tổng số lần']
+  used_count          int           [default: 0]
+  valid_from          datetime
+  valid_until         datetime      [note: 'nullable — null = không hết hạn']
+  is_active           boolean       [default: true]
+  created_at          datetime
+
+  indexes {
+    code
+    is_active
+  }
+}
+
+Table coupon_usages {
+  id              varchar(36)   [primary key]
+  coupon_id       varchar(36)   [not null]
+  phone           varchar(20)   [not null, note: 'SĐT khách nhập, không cần tài khoản']
+  bill_id         varchar(36)   [not null]
+  discount_amount decimal(12,2) [not null, note: 'số tiền thực tế đã giảm']
+  used_at         datetime
+
+  indexes {
+    (coupon_id, phone) [unique]
+  }
+}
+
+Ref: coupon_usages.coupon_id > coupons.id
+Ref: coupon_usages.bill_id > bills.id

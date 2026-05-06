@@ -10,9 +10,6 @@ export class GuestSession {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 36, name: 'venue_id' })
-  venueId!: string;
-
   @Column({ type: 'varchar', length: 36, name: 'table_id' })
   tableId!: string;
 

@@ -1,354 +1,148 @@
-  # 🍻 Smart Table & Game Booking — Project Roadmap
+# Restaurant — Project Roadmap
 
-> **Cập nhật lần cuối:** 2026-04-26
-> **Kiến trúc:** Core Platform (dùng chung mọi quán) + Venue Plugins (tính năng riêng từng loại quán)
-
----
-
-## 🎯 Vision
-
-Nền tảng SaaS tập trung cho 3 mô hình chính: bida, quán nước/cafe và karaoke truyền thống (mở rộng music box/cafe phim):
-
-- Chủ quán cài đặt một lần, khách dùng ngay qua QR
-- Không cần gọi nhân viên · Không cần chờ menu · Không cần ghi giấy
-- Mở rộng theo từng loại hình bằng cách bật thêm **plugin**
+> **Cập nhật lần cuối:** 2026-05-05
+> **Phạm vi:** Hệ thống vận hành **một quán ăn** — gọi món qua QR tại bàn
 
 ---
 
-## 🏛️ Kiến trúc tổng quan
+## Vision
 
-```
-┌─────────────────────────────────────────────┐
-│              CORE PLATFORM (v1)             │
-│  Auth · Menu · Order · Table · Bill · QR   │
-└────────────────┬────────────────────────────┘
-                 │ extends
-    ┌────────────┼────────────┐
-    ▼            ▼            ▼
-  [☕ Cafe]   [🎤 Karaoke]  [🎱 Bida]
-   Plugin       Plugin        Plugin
-```
+Khách ngồi xuống, scan QR tại bàn và chọn 1 trong 2 hình thức:
 
-> **Nguyên tắc:** Một quán mới chỉ cần bật đúng plugin phù hợp, không cần code lại từ đầu.
+- **Combo / Buffet** — trả một lần cố định, gọi các món nằm trong combo đó (có hoặc không giới hạn số lượng theo combo)
+- **Gọi món (Per item)** — gọi món nào tính tiền món đó
+
+Cùng một bàn có thể vừa mua combo vừa gọi thêm món ngoài combo. Bếp nhận đơn realtime. Thu ngân xuất bill cuối phiên.
 
 ---
 
-## 🟦 VERSION 1 — Core Platform
+## Roles
 
-> **Mục tiêu:** Base project hoạt động được tại BẤT KỲ loại quán nào ngay khi cài xong.
+| Role        | Mô tả                                                               |
+| ----------- | ------------------------------------------------------------------- |
+| `owner`     | Toàn quyền: quản lý nhân viên, menu, combo, báo cáo                 |
+| `manager`   | Quản lý menu, combo, bàn — không xóa tài khoản staff                |
+| `cashier`   | Tạo / đóng bill, xử lý thanh toán                                   |
+| `waiter`    | Tạo order thay khách, cập nhật trạng thái bàn                       |
+| `kitchen`   | Xem KDS, cập nhật trạng thái món                                    |
 
-### 👤 Auth & Phân quyền (RBAC)
+---
 
-**Mô hình Role-Based Access Control:**
+## Phase 1 — Core (MVP)
 
-```
-Owner
- └── Manager
-      └── Staff (Cashier / Waiter / Kitchen)
-Customer (Authenticated hoặc Guest)
-```
+### Auth
 
-**Roles & Permissions:**
+#### 1. Đăng nhập staff
+- [ ] Nhận `username` + `password`, xác thực với database
+- [ ] Trả về `access_token` (JWT, hết hạn 15 phút) + `refresh_token` (hết hạn 7 ngày)
+- [ ] `refresh_token` được hash trước khi lưu vào database
 
-| Role                         | Quyền                                                              |
-| ---------------------------- | ------------------------------------------------------------------ |
-| `owner`: Chủ cơ sở           | Toàn quyền: cài đặt venue, quản lý staff, xem báo cáo, billing     |
-| `manager`: Quản lý           | Quản lý menu, bàn, order, xem báo cáo — không xóa venue            |
-| `cashier`: Thu ngân          | Tạo/đóng bill, xem danh sách order, thanh toán                     |
-| `waiter`: Nhiên viên phục vụ | Tạo order, cập nhật trạng thái bàn, gọi món thay khách             |
-| `kitchen`: Nhiên viên bếp    | Chỉ xem màn hình bếp, cập nhật trạng thái món (`Cooking → Served`) |
-| `customer`: Khách hàng       | Xem menu, đặt món, theo dõi order của bàn mình                     |
-| `guest`: Khách               | Như `customer` nhưng không cần tài khoản (session tạm theo QR)     |
+#### 2. Refresh token
+- [ ] Nhận `refresh_token`, kiểm tra còn hợp lệ không (chưa bị thu hồi, chưa hết hạn)
+- [ ] Cấp cặp token mới, thu hồi token cũ ngay lập tức (rotation)
 
-**Luồng đăng nhập:**
+#### 3. Logout
+- [ ] Nhận `refresh_token`, đánh dấu thu hồi trong database
+- [ ] `access_token` còn lại tự hết hạn sau 15 phút (không cần blacklist)
 
-```
-Staff / Owner:
-  Username + Password → JWT (access 15p) + Refresh Token (7 ngày)
+#### 4. Phân quyền theo role
+- [ ] Mỗi API được gắn nhãn role được phép truy cập (owner / manager / cashier / waiter / kitchen)
+- [ ] Request không có token → 401
+- [ ] Request có token nhưng sai role → 403
+- [ ] Một user có thể có nhiều role cùng lúc
 
-Customer — 2 luồng:
-  1. Guest: Scan QR → tạo guest session (không cần đăng nhập)
-             → session gắn với tableId + expiry theo giờ hoạt động
-  2. Logged-in: Đăng nhập Username + Password hoặc SĐT + OTP → scan QR → gắn account vào session
-               → lịch sử order, tích điểm loyalty
+#### 5. Guest session (khách scan QR)
+- [ ] Khách scan QR tại bàn → hệ thống tạo `guest_session` tự động, không cần tài khoản
+- [ ] Trả về `guest_token` cho khách lưu tạm (dùng để gọi món)
+- [ ] `guest_token` hết hạn sau 4 tiếng hoặc khi bill được thanh toán
 
-Guest Session:
-  - Lưu token tạm trong cookie / localStorage
-  - Hết session (đóng bill) → token hết hạn
-  - Không lưu lịch sử, không tích điểm
-```
+#### 6. Quản lý tài khoản staff (chỉ owner)
+- [ ] Owner tạo tài khoản staff mới (username, mật khẩu, role)
+- [ ] Owner vô hiệu hoá tài khoản staff (`is_active = false`)
 
-**Checklist:**
+### Bàn & QR
 
-- [ ] RBAC Guard (`@Roles(...)`) áp dụng toàn bộ API
-- [ ] JWT access token (15 phút) + Refresh token (7 ngày)
-- [ ] Guest session: tạo temp token khi scan QR, gắn `tableId`
-- [ ] Owner tạo / vô hiệu hoá tài khoản Staff, gán role
-- [ ] Mỗi tài khoản có `username` duy nhất để đăng nhập (không dùng Google OAuth)
-- [ ] Customer đăng ký / đăng nhập qua SĐT + OTP
-- [ ] Middleware: Guest chỉ được gọi món trong bàn của mình
+- [ ] CRUD bàn: tên, sức chứa, trạng thái
+- [ ] Mỗi bàn có QR riêng (generate + tải về in)
+- [ ] Trạng thái bàn realtime: Available · Occupied · Reserved · Disabled
 
-### 🏪 Venue Management
+### Menu
 
-**Cấu trúc dữ liệu:**
-
-```
-Owner (account)
- └── Venue (chi nhánh)
-      ├── Settings (giờ, thuế, plugin…)
-      ├── Zone (khu vực: trong nhà / ngoài trời / VIP)
-      │    └── Table (bàn, QR)
-      ├── Menu → Category → Item
-      └── Staff (gán theo venue)
-```
-
-**Onboarding — Owner tạo quán:**
-
-- [ ] Bước 1 — Thông tin cơ bản: tên quán, địa chỉ, SĐT, logo, loại hình (`cafe` / `billiards` / `karaoke_traditional` / `music_box` / `cinema_cafe`)
-- [ ] Bước 2 — Giờ hoạt động: mở/đóng cửa theo từng ngày trong tuần, ngày nghỉ lễ
-- [ ] Bước 3 — Cài đặt tài chính: VAT (%), phí dịch vụ (%), đơn vị tiền tệ
-- [ ] Bước 4 — Chọn Venue Plugins muốn bật (xác định loại hình)
-
-**Venue Settings (cấu hình sau khi tạo):**
-
-| Nhóm          | Chi tiết                                                            |
-| ------------- | ------------------------------------------------------------------- |
-| Thông tin     | Tên, địa chỉ, logo, mô tả, SĐT, website                             |
-| Giờ hoạt động | Lịch mở cửa theo thứ, khung giờ cao điểm                            |
-| Tài chính     | VAT, phí dịch vụ, làm tròn hoá đơn                                  |
-| Order         | Cho phép guest order không, yêu cầu confirm trước khi gửi bếp không |
-| QR & Bàn      | Thời gian auto-release bàn (phút), thời gian guest session          |
-| Thông báo     | Kênh alert bếp (âm thanh / màn hình / cả hai)                       |
-| Plugin        | Bật / tắt từng Venue Plugin                                         |
-
-**Zone & Table:**
-
-- [ ] Tạo Zone (khu vực): tên, mô tả, thứ tự hiển thị
-- [ ] Tạo bàn trong Zone: tên bàn, sức chứa (số người tối đa)
-- [ ] Mỗi bàn có QR code riêng (generate + tải về để in)
-- [ ] Bật / tắt bàn (tạm đóng bàn đang sửa chữa)
-
-**Multi-venue:**
-
-- [ ] 1 owner account quản lý nhiều venue (chuỗi quán)
-- [ ] Chuyển nhanh giữa các venue trong dashboard
-- [ ] Báo cáo tổng hợp toàn chuỗi hoặc theo từng chi nhánh
-
-### 🪑 Quản lý bàn / khu vực
-
-- [ ] CRUD bàn (tên bàn, sức chứa, khu vực: trong/ngoài/VIP)
-- [ ] Layout map trực quan (drag-drop sắp xếp bàn)
-- [ ] Trạng thái bàn realtime: 🟢 Available · 🔴 Occupied · 🟡 Reserved
-- [ ] Generate QR code riêng cho từng bàn
-- [ ] WebSocket: broadcast trạng thái bàn tới tất cả client
-
-### 📋 Menu Management
-
-- [ ] CRUD danh mục (Category) và món (Item)
-- [ ] Ảnh món, mô tả, giá
-- [ ] Bật / tắt món theo ngày (hết hàng)
-- [ ] Sắp xếp thứ tự hiển thị
+- [ ] CRUD danh mục và món: tên, ảnh, giá, mô tả
+- [ ] Bật / tắt món (hết hàng trong ngày)
 - [ ] Tag: best seller, mới, khuyến mãi
 
-### 🍔 Order Realtime (tại bàn)
+### Combo / Buffet
 
-- [ ] Khách scan QR → vào session bàn đó
-- [ ] Xem menu, chọn món, ghi chú (không cay, không đá…)
-- [ ] Gửi order → WebSocket đẩy về bếp / quầy ngay lập tức
-- [ ] Trạng thái order: `Pending → Confirmed → Cooking → Served`
-- [ ] Khách theo dõi trạng thái order realtime
-- [ ] Thêm món bất kỳ lúc nào trong session
+- [ ] CRUD combo: tên, giá, mô tả, thời gian hiệu lực (VD: 2 tiếng)
+- [ ] Gán món vào combo + giới hạn số lượng mỗi món (null = không giới hạn)
+- [ ] Bật / tắt combo
+- [ ] Khi khách chọn combo tại bàn: ghi nhận số người mua combo
 
-### 🧑‍🍳 Staff & Kitchen Dashboard
+### Order Realtime
 
-- [ ] **Màn hình bếp (KDS):** nhận order realtime, kéo thả đổi trạng thái
-- [ ] Timer từng món (alert nếu quá 10 phút chưa xử lý)
-- [ ] Ghi chú dị ứng / yêu cầu đặc biệt nổi bật màu đỏ
-- [ ] **Màn hình quản lý:** danh sách bàn đang active, order đang chờ
-- [ ] Nhân viên có thể tạo order thay khách (walk-in)
+**Luồng combo:**
+- [ ] Khách mua combo → app hiển thị đúng danh sách món được gọi trong combo
+- [ ] Gọi món trong combo → không tính tiền thêm (trừ khi vượt giới hạn)
+- [ ] Khi gọi vượt giới hạn → tự động chuyển sang tính tiền à la carte
 
-### 💸 Billing & Thanh toán cơ bản
+**Luồng per item:**
+- [ ] Gọi món bất kỳ trong menu → tính tiền từng món
 
-- [ ] Tổng tiền tự động cập nhật khi thêm món
+**Chung:**
+- [ ] WebSocket đẩy đơn về bếp ngay lập tức
+- [ ] Trạng thái: `Pending → Confirmed → Cooking → Served`
+- [ ] Khách theo dõi trạng thái realtime
+- [ ] Nhân viên tạo order thay khách
+
+### Kitchen Display (KDS)
+
+- [ ] Nhận đơn mới realtime, hiển thị bàn + ghi chú
+- [ ] Bấm đổi trạng thái từng món / đơn
+- [ ] Cảnh báo đơn chờ quá 10 phút
+
+### Billing
+
+- [ ] Bill tổng hợp: combo đã mua + món à la carte + món vượt giới hạn combo
+- [ ] Hiển thị rõ từng phần trên bill
 - [ ] In / xuất bill (PDF hoặc in nhiệt)
-- [ ] Thanh toán tại quầy (tiền mặt / chuyển khoản)
-- [ ] Lưu lịch sử đơn hàng
+- [ ] Thanh toán: tiền mặt / chuyển khoản / QR banking
 
-### 🔔 Notification cơ bản
+### Gọi nhân viên
 
-- [ ] In-app: order status thay đổi
-- [ ] Gọi nhân viên one-tap (kèm lý do: cần đá, dọn bàn, hỏi bill)
-- [ ] Alert bếp khi có order mới
-
-### 📊 Reports cơ bản
-
-- [ ] Doanh thu theo ngày / tuần / tháng
-- [ ] Top món bán chạy
-- [ ] Số lượng khách / lượt bàn theo giờ
+- [ ] Khách bấm 1 nút từ QR: gọi thêm đá, dọn bàn, yêu cầu bill
+- [ ] Nhân viên nhận alert realtime
 
 ---
 
-## 🟨 VENUE PLUGINS (Phát triển sau v1)
+## Phase 2 — Nâng cao
 
-> Mỗi plugin là một module độc lập, bật/tắt trong settings của venue.
-
----
-
-### ☕ Plugin: Quán Nước / Cafe
-
-**Vấn đề đặc thù:** Đồ uống có nhiều biến thể (size, đường, đá), khách hay mua take-away.
-
-| Feature       | Mô tả                                                     | Status     |
-| ------------- | --------------------------------------------------------- | ---------- |
-| Item Variants | Tuỳ chọn size (S/M/L), đường (0%–100%), đá (ít/vừa/nhiều) | 📋 Planned |
-| Takeaway Mode | Order mang về, nhân viên gọi tên / số thứ tự khi xong     | 📋 Planned |
-| Loyalty Stamp | Mua 9 ly tặng 1 ly (digital stamp card)                   | 📋 Planned |
-| Subscription  | Gói tháng: 20 ly cafe/tháng giảm 30%                      | 📋 Planned |
-| Queue Display | Màn hình hiển thị số thứ tự đang pha / đã xong            | 📋 Planned |
+- [ ] Báo cáo doanh thu: ngày / tuần / tháng, top món, hiệu quả combo
+- [ ] Tồn kho nguyên liệu + alert sắp hết
+- [ ] Giảm giá / voucher trên bill
+- [ ] Lịch sử order + tích điểm cho khách đăng ký tài khoản
+- [ ] Thanh toán online: VNPay / Momo
 
 ---
 
-### 🎤 Plugin: Karaoke Truyền Thống / Music Box / Cafe Phim
+## Tech Stack
 
-**Vấn đề đặc thù:** Đặt phòng theo giờ, tính tiền theo thời gian, quản lý phòng.
-
-| Feature            | Mô tả                                                                                      | Status     |
-| ------------------ | ------------------------------------------------------------------------------------------ | ---------- |
-| Room Booking       | Đặt phòng theo slot (1h / 2h / 3h), chọn loại phòng (4-8-12 người)                         | 📋 Planned |
-| Room Timer         | Đồng hồ đếm giờ realtime, cảnh báo 15 phút trước hết giờ                                   | 📋 Planned |
-| Extend Room        | Gia hạn thêm giờ ngay từ app trong phòng                                                   | 📋 Planned |
-| Package Deal       | Combo: phòng + đồ ăn + nước (giá trọn gói)                                                 | 📋 Planned |
-| Room Service       | Gọi đồ ăn / nước vào phòng, không cần ra ngoài                                             | 📋 Planned |
-| Song Request       | Khách request bài qua app, màn hình queue bài hát (áp dụng karaoke truyền thống/music box) | 📋 Planned |
-| Room Status Board  | Màn hình lễ tân: phòng nào trống/đang dùng/sắp hết giờ                                     | 📋 Planned |
-| Media Session Mode | Chế độ theo phiên: karaoke / music box / cafe phim để bật đúng tính năng vận hành          | 📋 Planned |
+| Layer    | Công nghệ                   |
+| -------- | --------------------------- |
+| Backend  | NestJS + TypeORM            |
+| Database | MySQL 8                     |
+| Realtime | WebSocket (NestJS Gateway)  |
+| Cache    | Redis                       |
+| Auth     | JWT + Refresh Token         |
+| Storage  | Cloudinary (ảnh món)        |
+| Payment  | VietQR / VNPay / Momo       |
 
 ---
 
-### 🎱 Plugin: Quán Bida / Game
+## Changelog
 
-**Vấn đề đặc thù:** Tính tiền theo thời gian chơi, quản lý nhiều bàn/sân.
-
-| Feature            | Mô tả                                                         | Status     |
-| ------------------ | ------------------------------------------------------------- | ---------- |
-| Time-based Billing | Tính tiền tự động theo giờ chơi (ví dụ: 30k/h), tick realtime | 📋 Planned |
-| Table Timer        | Start/Stop timer cho từng bàn, hiển thị giờ đang chạy         | 📋 Planned |
-| Auto Stop          | Tự động dừng tính tiền khi hết slot đặt trước                 | 📋 Planned |
-| Multi-rate Pricing | Giá khác nhau theo giờ (giờ vàng, giờ thường, cuối tuần)      | 📋 Planned |
-| Digital Scoreboard | Nhập điểm bi-a / bóng bàn / dart, hiển thị live trên TV       | 📋 Planned |
-| Tournament Mode    | Tạo giải đấu mini, bracket tự động, leaderboard realtime      | 📋 Planned |
-| Equipment Rental   | Thuê gậy, cầu lông, găng tay — tính phí riêng                 | 📋 Planned |
-
----
-
-## 🚀 Extended Features (Áp dụng cho tất cả loại quán — sau v1)
-
-### 💰 Billing nâng cao
-
-| Feature          | Mô tả                                             | Status     |
-| ---------------- | ------------------------------------------------- | ---------- |
-| Smart Split Bill | Chia đều / chia theo từng người gọi món gì        | 📋 Planned |
-| Loyalty Points   | Tích điểm mỗi đơn, đổi lấy món miễn phí, VIP tier | 📋 Planned |
-| Digital Receipt  | Hóa đơn qua Zalo / Email / SMS                    | 📋 Planned |
-| Online Payment   | QR banking (VietQR), VNPay, Momo                  | 📋 Planned |
-
-### 🤖 AI & Smart
-
-| Feature           | Mô tả                                           | Status     |
-| ----------------- | ----------------------------------------------- | ---------- |
-| Smart Upsell      | Gợi ý combo khi gọi món ("Thêm đồ nhắm không?") | 📋 Planned |
-| AI Recommendation | Gợi ý món dựa trên lịch sử, filter diet         | 📋 Planned |
-| Dynamic Pricing   | Happy hour tự động, flash deal khi slot cuối    | 📋 Planned |
-
-### 🏪 Quản lý nâng cao
-
-| Feature           | Mô tả                                        | Status     |
-| ----------------- | -------------------------------------------- | ---------- |
-| Inventory & Stock | Tồn kho, auto mark hết hàng, alert sắp hết   | 📋 Planned |
-| Staff Scheduling  | Ca làm việc, assign khu vực, tip tracking    | 📋 Planned |
-| Analytics Pro     | Revenue heatmap, customer cohort, peak hours | 📋 Planned |
-
-### 🔧 Tech nâng cao
-
-| Feature         | Mô tả                                        | Status     |
-| --------------- | -------------------------------------------- | ---------- |
-| Offline Mode    | App hoạt động khi mất mạng, sync lại sau     | 📋 Planned |
-| IoT Integration | Đèn báo bàn vật lý, smart lock phòng karaoke | 📋 Planned |
-| Social Sharing  | Check-in tích điểm, photo frame quán         | 📋 Planned |
-
----
-
-## 🗓️ Lộ trình phát triển
-
-### ✅ Version 1 — Core Platform
-
-> **Mục tiêu:** 1 nền tảng base hoạt động được tại bất kỳ quán nào
-
-```
-Sprint 1 (2 tuần)         Sprint 2 (2 tuần)         Sprint 3 (2 tuần)
-─────────────────         ─────────────────         ─────────────────
-Auth & Role               Menu Management           Order Realtime
-Venue setup               Table + QR gen            Kitchen Dashboard
-DB schema                 Table status WS           Billing cơ bản
-```
-
-**Deliverable v1:** Một quán trong 3 mô hình mục tiêu (bida / cafe / karaoke) có thể vận hành end-to-end
-
----
-
-### 🔜 Version 2 — Venue Plugins (sau v1 ổn định)
-
-| Thứ tự | Plugin                                          | Lý do ưu tiên                                                |
-| ------ | ----------------------------------------------- | ------------------------------------------------------------ |
-| 1      | 🎱 Bida                                         | Tính tiền theo giờ là killer feature, khác biệt rõ nhất      |
-| 2      | ☕ Cafe / Quán nước (gọi nước + đồ ăn)          | Nhu cầu cao, dễ rollout theo bàn/QR                          |
-| 3      | 🎤 Karaoke truyền thống / Music Box / Cafe phim | Cần room/session management, triển khai sau khi core ổn định |
-
----
-
-### 🔮 Version 3 — Scale & Smart
-
-- AI features (recommendation, upsell)
-- Analytics Pro
-- Multi-outlet management
-- IoT Integration
-
----
-
-## 🏗️ Tech Stack
-
-| Layer        | Technology                      |
-| ------------ | ------------------------------- |
-| Backend      | NestJS + TypeORM                |
-| Database     | PostgreSQL                      |
-| Realtime     | WebSocket (NestJS Gateway)      |
-| Cache        | Redis (session, realtime state) |
-| Auth         | JWT + Refresh Token             |
-| Payment      | VietQR / VNPay / Momo           |
-| Notification | Firebase FCM / Zalo OA          |
-| Storage      | S3 / Cloudinary (ảnh món)       |
-| Frontend     | (TBD)                           |
-| IoT (v3)     | MQTT                            |
-
----
-
-## 📊 Status Legend
-
-| Icon           | Nghĩa           |
-| -------------- | --------------- |
-| 📋 Planned     | Đã lên kế hoạch |
-| 🔨 In Progress | Đang phát triển |
-| ✅ Done        | Hoàn thành      |
-| ⏸️ On Hold     | Tạm dừng        |
-| ❌ Cancelled   | Hủy             |
-
----
-
-## 📝 Changelog
-
-| Ngày       | Nội dung                                                                                                                                                                  |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-04-24 | Khởi tạo roadmap, xác định core features và extended features                                                                                                             |
-| 2026-04-24 | Tái cấu trúc theo kiến trúc Core Platform + Venue Plugins; thêm plugin cho Cafe, Karaoke, Bida, Nhà hàng, Sports Bar                                                      |
-| 2026-04-24 | Chi tiết hoá v1: RBAC (6 roles + guest session), Customer 2 luồng (login / QR guest), Venue Management (onboarding 4 bước, zone/table, multi-venue)                       |
-| 2026-04-26 | Thu hẹp phạm vi sản phẩm còn 3 mô hình: Bida, Quán nước/Cafe, Karaoke truyền thống (mở rộng Music Box/Cafe phim); bỏ ưu tiên Nhà hàng và Sports Bar khỏi roadmap hiện tại |
+| Ngày       | Nội dung                                                              |
+| ---------- | --------------------------------------------------------------------- |
+| 2026-05-05 | Khởi tạo roadmap cho quán ăn gọi món qua QR                          |
+| 2026-05-05 | Thêm mô hình combo/buffet + à la carte trong cùng một phiên bàn      |
+| 2026-05-06 | Mở rộng kế hoạch Auth: 6 nhóm tính năng chi tiết                     |

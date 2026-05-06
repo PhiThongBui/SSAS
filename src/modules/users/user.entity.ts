@@ -6,13 +6,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export enum Gender {
-  Male = 'male',
-  Female = 'female',
-  Other = 'other',
-  PreferNotToSay = 'prefer_not_to_say',
-}
-
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -32,12 +25,6 @@ export class User {
 
   @Column({ type: 'varchar', length: 150, name: 'full_name' })
   fullName!: string;
-
-  @Column({ type: 'varchar', length: 20, nullable: true })
-  gender!: Gender | null;
-
-  @Column({ type: 'varchar', length: 80, unique: true, nullable: true })
-  njkname!: string | null;
 
   @Column({ type: 'boolean', default: true, name: 'is_active' })
   isActive!: boolean;

@@ -12,22 +12,21 @@ import { User } from '../users/user.entity';
 export enum RoleCode {
   Owner = 'owner',
   Manager = 'manager',
-  Staff = 'staff',
+  Cashier = 'cashier',
+  Waiter = 'waiter',
+  Kitchen = 'kitchen',
 }
 
-@Entity('user_venue_roles')
-@Index(['userId', 'venueId', 'role'], { unique: true })
-export class UserVenueRole {
+@Entity('user_roles')
+@Index(['userId', 'role'], { unique: true })
+export class UserRole {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
   @Column({ type: 'varchar', length: 36, name: 'user_id' })
   userId!: string;
 
-  @Column({ type: 'varchar', length: 36, name: 'venue_id' })
-  venueId!: string;
-
-  @Column({ type: 'enum', enum: RoleCode, enumName: 'role_code' })
+  @Column({ type: 'enum', enum: RoleCode })
   role!: RoleCode;
 
   @Column({ type: 'boolean', default: true, name: 'is_active' })
