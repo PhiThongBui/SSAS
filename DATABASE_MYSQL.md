@@ -61,7 +61,6 @@ payment_method : cash | bank_transfer | qr_banking
 | user_id    | varchar(36) FK → users.id |           |
 | token_hash | text           |                      |
 | expires_at | datetime       |                      |
-| revoked_at | datetime       | nullable             |
 | created_at | datetime       |                      |
 
 ---

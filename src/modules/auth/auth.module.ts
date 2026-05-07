@@ -6,6 +6,10 @@ import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { RolesModule } from '../roles/roles.module';
 import { RefreshTokensModule } from '../refresh_tokens/refresh_tokens.module';
+import { GuestSessionsModule } from '../guest_sessions/guest_sessions.module';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
+import { GuestAuthGuard } from './guards/guest-auth.guard';
 
 @Module({
   imports: [
@@ -20,8 +24,10 @@ import { RefreshTokensModule } from '../refresh_tokens/refresh_tokens.module';
     UsersModule,
     RolesModule,
     RefreshTokensModule,
+    GuestSessionsModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, JwtAuthGuard, RolesGuard, GuestAuthGuard],
+  exports: [JwtAuthGuard, RolesGuard, GuestAuthGuard],
 })
 export class AuthModule {}

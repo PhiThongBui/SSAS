@@ -22,9 +22,6 @@ export class RefreshToken {
   @Column({ type: 'datetime', name: 'expires_at' })
   expiresAt!: Date;
 
-  @Column({ type: 'datetime', nullable: true, name: 'revoked_at' })
-  revokedAt!: Date | null;
-
   @CreateDateColumn({ type: 'datetime', name: 'created_at' })
   createdAt!: Date;
 

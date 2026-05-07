@@ -1,0 +1,9 @@
+import { ApiProperty } from '@nestjs/swagger';
+
+export class RefreshDto {
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'Refresh token nhận được khi đăng nhập',
+  })
+  refresh_token!: string;
+}

@@ -25,4 +25,12 @@ export class RefreshTokensService {
     await this.repo.save(this.repo.create({ userId, tokenHash, expiresAt }));
     return rawToken;
   }
+
+  findByRawToken(rawToken: string): Promise<RefreshToken | null> {
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
+    return this.repo.findOne({ where: { tokenHash } });
+  }
 }

@@ -38,8 +38,10 @@ Cùng một bàn có thể vừa mua combo vừa gọi thêm món ngoài combo. 
 - [ ] `refresh_token` được hash trước khi lưu vào database
 
 #### 2. Refresh token
-- [ ] Nhận `refresh_token`, kiểm tra còn hợp lệ không (chưa bị thu hồi, chưa hết hạn)
-- [ ] Cấp cặp token mới, thu hồi token cũ ngay lập tức (rotation)
+- [ ] Nhận `refresh_token` từ client
+- [ ] Kiểm tra token tồn tại trong DB
+- [ ] Kiểm tra token chưa hết hạn (`expires_at > now`)
+- [ ] Cấp `access_token` mới (JWT 15 phút), giữ nguyên `refresh_token` cũ
 
 #### 3. Logout
 - [ ] Nhận `refresh_token`, đánh dấu thu hồi trong database
