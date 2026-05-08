@@ -9,6 +9,8 @@ import { RefreshTokensModule } from './modules/refresh_tokens/refresh_tokens.mod
 import { DatabaseModule } from './config/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { TablesModule } from './modules/tables/tables.module';
+import { MenuModule } from './modules/menu/menu.module';
+import { MenuCategoryModule } from './modules/menu-category/menu-category.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { TablesModule } from './modules/tables/tables.module';
     RefreshTokensModule,
     AuthModule,
     TablesModule,
+    MenuCategoryModule,
+    MenuModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -6,6 +6,14 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+  const allowedOrigins = process.env.CORS_ORIGIN?.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  app.enableCors({
+    origin: allowedOrigins?.length ? allowedOrigins : true,
+    credentials: true,
+  });
 
   const config = new DocumentBuilder()
     .setTitle('Restaurant API')
