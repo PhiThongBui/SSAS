@@ -22,9 +22,7 @@ export class GuestSessionsController {
     },
   })
   async create(@Body() dto: CreateGuestSessionDto) {
-    const { rawToken, expiresAt } = await this.guestSessionsService.create(
-      dto.tableId,
-    );
+    const { rawToken, expiresAt } = await this.guestSessionsService.create(dto);
     return { guest_token: rawToken, expires_at: expiresAt };
   }
 }

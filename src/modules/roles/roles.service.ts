@@ -13,4 +13,11 @@ export class RolesService {
     const rows = await this.repo.find({ where: { userId, isActive: true } });
     return rows.map((r) => r.role);
   }
+
+  async assignRoles(userId: string, roles: RoleCode[]): Promise<void> {
+    await this.repo.upsert(
+      roles.map((role) => ({ userId, role })),
+      ['userId', 'role'],
+    );
+  }
 }

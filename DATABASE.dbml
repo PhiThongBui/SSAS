@@ -81,6 +81,8 @@ Table menu_categories {
   name          varchar(120) [not null]
   display_order int          [default: 0]
   is_active     boolean      [default: true]
+  created_at    datetime
+  updated_at    datetime
 }
 
 Table menu_items {
@@ -90,6 +92,7 @@ Table menu_items {
   description   text          [note: 'nullable']
   image_url     text          [note: 'nullable']
   price         decimal(12,2) [not null, note: 'giá per item']
+  is_active     boolean       [default: true]
   is_available  boolean       [default: true]
   is_best_seller boolean      [default: false]
   is_new        boolean       [default: false]

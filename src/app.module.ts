@@ -8,6 +8,7 @@ import { GuestSessionsModule } from './modules/guest_sessions/guest_sessions.mod
 import { RefreshTokensModule } from './modules/refresh_tokens/refresh_tokens.module';
 import { DatabaseModule } from './config/database.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { TablesModule } from './modules/tables/tables.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AuthModule } from './modules/auth/auth.module';
     GuestSessionsModule,
     RefreshTokensModule,
     AuthModule,
+    TablesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -2,8 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Table } from '../tables/tables.entity';
 
 @Entity('guest_sessions')
 export class GuestSession {
@@ -12,6 +15,10 @@ export class GuestSession {
 
   @Column({ type: 'varchar', length: 36, name: 'table_id' })
   tableId!: string;
+
+  @ManyToOne(() => Table, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'table_id' })
+  table!: Table;
 
   @Column({ type: 'varchar', length: 255, unique: true, name: 'guest_token_hash' })
   guestTokenHash!: string;

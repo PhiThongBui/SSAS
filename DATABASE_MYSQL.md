@@ -102,6 +102,8 @@ payment_method : cash | bank_transfer | qr_banking
 | name          | varchar(120)   | Khai vị, Món chính, Tráng miệng, Đồ uống… |
 | display_order | int            | default 0                  |
 | is_active     | boolean        | default true               |
+| created_at    | datetime       |                            |
+| updated_at    | datetime       |                            |
 
 ### menu_items
 
@@ -113,6 +115,7 @@ payment_method : cash | bank_transfer | qr_banking
 | description    | text           | nullable                         |
 | image_url      | text           | nullable                         |
 | price          | decimal(12,2)  | giá à la carte                   |
+| is_active      | boolean        | default true                     |
 | is_available   | boolean        | default true                     |
 | is_best_seller | boolean        | default false                    |
 | is_new         | boolean        | default false                    |
