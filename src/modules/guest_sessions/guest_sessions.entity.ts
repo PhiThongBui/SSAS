@@ -20,7 +20,12 @@ export class GuestSession {
   @JoinColumn({ name: 'table_id' })
   table!: Table;
 
-  @Column({ type: 'varchar', length: 255, unique: true, name: 'guest_token_hash' })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    unique: true,
+    name: 'guest_token_hash',
+  })
   guestTokenHash!: string;
 
   @Column({ type: 'datetime', name: 'expires_at' })

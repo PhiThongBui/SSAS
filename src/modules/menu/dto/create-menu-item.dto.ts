@@ -13,7 +13,10 @@ export class CreateMenuItemDto {
   @ApiProperty({ example: 129000, description: 'Per-item price' })
   price!: number;
 
-  @ApiPropertyOptional({ example: 'Tender beef with black pepper sauce', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Tender beef with black pepper sauce',
+    nullable: true,
+  })
   description?: string | null;
 
   @ApiPropertyOptional({

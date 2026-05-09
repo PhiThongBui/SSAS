@@ -7,7 +7,11 @@ import { MenuItem } from './menu-item.entity';
 import { MenuService } from './menu.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([MenuItem]), JwtModule, MenuCategoryModule],
+  imports: [
+    TypeOrmModule.forFeature([MenuItem]),
+    JwtModule,
+    MenuCategoryModule,
+  ],
   controllers: [MenuController],
   providers: [MenuService],
   exports: [MenuService],

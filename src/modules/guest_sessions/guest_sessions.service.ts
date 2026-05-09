@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
@@ -38,7 +42,9 @@ export class GuestSessionsService {
     }
 
     if (input.qrCodeValue) {
-      const table = await this.tablesService.findByQrCodeValue(input.qrCodeValue);
+      const table = await this.tablesService.findByQrCodeValue(
+        input.qrCodeValue,
+      );
 
       if (!table) {
         throw new NotFoundException('Không tìm thấy bàn với QR code này');

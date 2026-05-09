@@ -7,13 +7,19 @@ export class UpdateMenuItemDto {
   })
   categoryId?: string;
 
-  @ApiPropertyOptional({ example: 'Pepper beef', description: 'Menu item name' })
+  @ApiPropertyOptional({
+    example: 'Pepper beef',
+    description: 'Menu item name',
+  })
   name?: string;
 
   @ApiPropertyOptional({ example: 129000, description: 'Per-item price' })
   price?: number;
 
-  @ApiPropertyOptional({ example: 'Tender beef with black pepper sauce', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Tender beef with black pepper sauce',
+    nullable: true,
+  })
   description?: string | null;
 
   @ApiPropertyOptional({
