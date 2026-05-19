@@ -5,6 +5,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
+import {
+  normalizeBoolean,
+  normalizeDisplayOrder,
+  normalizeOptionalText,
+  normalizePrice,
+  normalizeRequiredText,
+} from '../../helper/normalize';
 import { MenuCategoryService } from '../menu-category/menu-category.service';
 import { CreateMenuItemDto } from './dto/create-menu-item.dto';
 import {
@@ -28,34 +35,34 @@ export class MenuService {
     const category = await this.menuCategoryService.findActiveByIdOrFail(
       dto.categoryId,
     );
-    const name = this.normalizeRequiredText(dto.name, 'name', 200);
-    const price = this.normalizePrice(dto.price);
-    const displayOrder = this.normalizeDisplayOrder(dto.displayOrder);
+    const name = normalizeRequiredText(dto.name, 'name', 200);
+    const price = normalizePrice(dto.price);
+    const displayOrder = normalizeDisplayOrder(dto.displayOrder);
 
     return this.itemRepo.save(
       this.itemRepo.create({
         categoryId: category.id,
         name,
         price,
-        description: this.normalizeOptionalText(dto.description),
-        imageUrl: this.normalizeOptionalText(dto.imageUrl),
+        description: normalizeOptionalText(dto.description),
+        imageUrl: normalizeOptionalText(dto.imageUrl),
         isActive: true,
         isAvailable:
           dto.isAvailable === undefined
             ? true
-            : this.normalizeBoolean(dto.isAvailable, 'isAvailable'),
+            : normalizeBoolean(dto.isAvailable, 'isAvailable'),
         isBestSeller:
           dto.isBestSeller === undefined
             ? false
-            : this.normalizeBoolean(dto.isBestSeller, 'isBestSeller'),
+            : normalizeBoolean(dto.isBestSeller, 'isBestSeller'),
         isNew:
           dto.isNew === undefined
             ? false
-            : this.normalizeBoolean(dto.isNew, 'isNew'),
+            : normalizeBoolean(dto.isNew, 'isNew'),
         isPromo:
           dto.isPromo === undefined
             ? false
-            : this.normalizeBoolean(dto.isPromo, 'isPromo'),
+            : normalizeBoolean(dto.isPromo, 'isPromo'),
         displayOrder,
       }),
     );
@@ -72,23 +79,23 @@ export class MenuService {
     }
 
     if (dto.name !== undefined) {
-      item.name = this.normalizeRequiredText(dto.name, 'name', 200);
+      item.name = normalizeRequiredText(dto.name, 'name', 200);
     }
 
     if (dto.price !== undefined) {
-      item.price = this.normalizePrice(dto.price);
+      item.price = normalizePrice(dto.price);
     }
 
     if (dto.description !== undefined) {
-      item.description = this.normalizeOptionalText(dto.description);
+      item.description = normalizeOptionalText(dto.description);
     }
 
     if (dto.imageUrl !== undefined) {
-      item.imageUrl = this.normalizeOptionalText(dto.imageUrl);
+      item.imageUrl = normalizeOptionalText(dto.imageUrl);
     }
 
     if (dto.displayOrder !== undefined) {
-      item.displayOrder = this.normalizeDisplayOrder(dto.displayOrder);
+      item.displayOrder = normalizeDisplayOrder(dto.displayOrder);
     }
 
     return this.itemRepo.save(item);
@@ -122,26 +129,22 @@ export class MenuService {
     const item = await this.findActiveItemOrFail(id);
 
     if (dto.isBestSeller !== undefined) {
-      item.isBestSeller = this.normalizeBoolean(
-        dto.isBestSeller,
-        'isBestSeller',
-      );
+      item.isBestSeller = normalizeBoolean(dto.isBestSeller, 'isBestSeller');
     }
 
     if (dto.isNew !== undefined) {
-      item.isNew = this.normalizeBoolean(dto.isNew, 'isNew');
+      item.isNew = normalizeBoolean(dto.isNew, 'isNew');
     }
 
     if (dto.isPromo !== undefined) {
-      item.isPromo = this.normalizeBoolean(dto.isPromo, 'isPromo');
+      item.isPromo = normalizeBoolean(dto.isPromo, 'isPromo');
     }
 
     return this.itemRepo.save(item);
   }
 
   findPublicItems(query: ListMenuItemsQueryDto): Promise<MenuItem[]> {
-    const includeUnavailable =
-      query.includeUnavailable === true || query.includeUnavailable === 'true';
+    const includeUnavailable = query.includeUnavailable === true;
 
     const qb = this.itemRepo
       .createQueryBuilder('item')
@@ -200,73 +203,6 @@ export class MenuService {
     }
 
     return item;
-  }
-
-  private normalizeRequiredText(
-    value: unknown,
-    field: string,
-    maxLength: number,
-  ): string {
-    if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException(`${field} is required`);
-    }
-
-    const normalized = value.trim();
-    if (normalized.length > maxLength) {
-      throw new BadRequestException(
-        `${field} must be at most ${maxLength} characters`,
-      );
-    }
-
-    return normalized;
-  }
-
-  private normalizeOptionalText(value: unknown): string | null {
-    if (value === undefined || value === null) {
-      return null;
-    }
-
-    if (typeof value !== 'string') {
-      throw new BadRequestException('Optional text fields must be strings');
-    }
-
-    const normalized = value.trim();
-    return normalized.length > 0 ? normalized : null;
-  }
-
-  private normalizeDisplayOrder(value: unknown): number {
-    if (value === undefined || value === null) {
-      return 0;
-    }
-
-    if (typeof value !== 'number' || !Number.isInteger(value)) {
-      throw new BadRequestException('displayOrder must be an integer');
-    }
-
-    return value;
-  }
-
-  private normalizePrice(value: unknown): string {
-    const numericValue =
-      typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
-
-    if (
-      typeof numericValue !== 'number' ||
-      !Number.isFinite(numericValue) ||
-      numericValue < 0
-    ) {
-      throw new BadRequestException('price must be a non-negative number');
-    }
-
-    return numericValue.toFixed(2);
-  }
-
-  private normalizeBoolean(value: unknown, field: string): boolean {
-    if (typeof value !== 'boolean') {
-      throw new BadRequestException(`${field} must be a boolean`);
-    }
-
-    return value;
   }
 
   private applyTagFilter(

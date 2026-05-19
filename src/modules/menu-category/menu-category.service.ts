@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
+import {
+  normalizeDisplayOrder,
+  normalizeRequiredText,
+} from '../../helper/normalize';
 import { CreateMenuCategoryDto } from './dto/create-menu-category.dto';
 import { UpdateMenuCategoryDto } from './dto/update-menu-category.dto';
 import { MenuCategory } from './menu-category.entity';
@@ -18,8 +22,8 @@ export class MenuCategoryService {
   ) {}
 
   async create(dto: CreateMenuCategoryDto): Promise<MenuCategory> {
-    const name = this.normalizeRequiredText(dto.name, 'name', 120);
-    const displayOrder = this.normalizeDisplayOrder(dto.displayOrder);
+    const name = normalizeRequiredText(dto.name, 'name', 120);
+    const displayOrder = normalizeDisplayOrder(dto.displayOrder);
 
     await this.ensureNameIsUnique(name);
 
@@ -36,12 +40,12 @@ export class MenuCategoryService {
     const category = await this.findActiveByIdOrFail(id);
 
     if (dto.name !== undefined) {
-      category.name = this.normalizeRequiredText(dto.name, 'name', 120);
+      category.name = normalizeRequiredText(dto.name, 'name', 120);
       await this.ensureNameIsUnique(category.name, category.id);
     }
 
     if (dto.displayOrder !== undefined) {
-      category.displayOrder = this.normalizeDisplayOrder(dto.displayOrder);
+      category.displayOrder = normalizeDisplayOrder(dto.displayOrder);
     }
 
     return this.categoryRepo.save(category);
@@ -104,34 +108,4 @@ export class MenuCategoryService {
     }
   }
 
-  private normalizeRequiredText(
-    value: unknown,
-    field: string,
-    maxLength: number,
-  ): string {
-    if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException(`${field} is required`);
-    }
-
-    const normalized = value.trim();
-    if (normalized.length > maxLength) {
-      throw new BadRequestException(
-        `${field} must be at most ${maxLength} characters`,
-      );
-    }
-
-    return normalized;
-  }
-
-  private normalizeDisplayOrder(value: unknown): number {
-    if (value === undefined || value === null) {
-      return 0;
-    }
-
-    if (typeof value !== 'number' || !Number.isInteger(value)) {
-      throw new BadRequestException('displayOrder must be an integer');
-    }
-
-    return value;
-  }
 }
