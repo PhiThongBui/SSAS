@@ -1,4 +1,12 @@
-import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { DiningSession } from '../dining_sessions/dining_sessions.entity';
+import { GuestSession } from '../guest_sessions/guest_sessions.entity';
 
 export enum TableStatus {
   Available = 'available',
@@ -32,4 +40,10 @@ export class Table {
 
   @Column({ type: 'boolean', default: true, name: 'is_active' })
   isActive!: boolean;
+
+  @OneToMany(() => GuestSession, (guestSession) => guestSession.table)
+  guestSessions!: GuestSession[];
+
+  @OneToMany(() => DiningSession, (diningSession) => diningSession.table)
+  diningSessions!: DiningSession[];
 }

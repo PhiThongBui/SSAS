@@ -4,8 +4,10 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { DiningSession } from '../dining_sessions/dining_sessions.entity';
 import { Table } from '../tables/tables.entity';
 
 @Entity('guest_sessions')
@@ -36,4 +38,7 @@ export class GuestSession {
 
   @CreateDateColumn({ type: 'datetime', name: 'created_at' })
   createdAt!: Date;
+
+  @OneToMany(() => DiningSession, (diningSession) => diningSession.guestSession)
+  diningSessions!: DiningSession[];
 }

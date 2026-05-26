@@ -172,7 +172,7 @@ Table orders {
   order_type         varchar(20) [not null, note: 'enum: combo | per_item']
   session_combo_id   varchar(36) [note: 'nullable — chỉ điền nếu order_type = combo']
   created_by_user_id varchar(36) [note: 'nullable — null nếu khách tự gọi']
-  status             varchar(20) [default: 'pending', note: 'enum: pending | confirmed | cooking | served | cancelled']
+  status             varchar(20) [not null, note: 'trạng thái tổng hợp để query nhanh; combo: requested | served | cancelled, per_item: pending | confirmed | cooking | served | cancelled']
   note               text        [note: 'nullable']
   created_at         datetime
   updated_at         datetime
@@ -192,7 +192,7 @@ Table order_items {
   qty                 int           [not null]
   is_covered_by_combo boolean       [not null, note: 'true = trong combo, false = tính tiền']
   note                text          [note: 'nullable']
-  status              varchar(20)   [default: 'pending']
+  status              varchar(20)   [not null, note: 'nguồn trạng thái thực tế cho realtime/KDS; combo: requested | served | cancelled, per_item: pending | confirmed | cooking | served | cancelled']
   created_at          datetime
 
   indexes {
@@ -204,10 +204,17 @@ Table order_items {
 Table order_events {
   id                 varchar(36) [primary key]
   order_id           varchar(36) [not null]
+  order_item_id      varchar(36) [note: 'nullable — nên điền khi đổi trạng thái từng món']
   from_status        varchar(20) [note: 'nullable']
   to_status          varchar(20) [not null]
   changed_by_user_id varchar(36) [note: 'nullable']
   changed_at         datetime
+
+  indexes {
+    order_id
+    order_item_id
+    changed_at
+  }
 }
 
 Ref: dining_sessions.table_id > tables.id
@@ -221,6 +228,7 @@ Ref: orders.created_by_user_id > users.id
 Ref: order_items.order_id > orders.id
 Ref: order_items.menu_item_id > menu_items.id
 Ref: order_events.order_id > orders.id
+Ref: order_events.order_item_id > order_items.id
 Ref: order_events.changed_by_user_id > users.id
 
 // ─────────────────────────────────────────

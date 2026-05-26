@@ -2,9 +2,14 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { DiningSession } from '../dining_sessions/dining_sessions.entity';
+import { OrderEvent } from '../order_events/order_events.entity';
+import { Order } from '../orders/orders.entity';
+import { UserRole } from '../roles/user_venue_roles.entity';
 
 @Entity('users')
 export class User {
@@ -34,4 +39,16 @@ export class User {
 
   @UpdateDateColumn({ type: 'datetime', name: 'updated_at' })
   updatedAt!: Date;
+
+  @OneToMany(() => UserRole, (userRole) => userRole.user)
+  roles!: UserRole[];
+
+  @OneToMany(() => DiningSession, (diningSession) => diningSession.openedByUser)
+  openedDiningSessions!: DiningSession[];
+
+  @OneToMany(() => Order, (order) => order.createdByUser)
+  createdOrders!: Order[];
+
+  @OneToMany(() => OrderEvent, (orderEvent) => orderEvent.changedByUser)
+  orderEvents!: OrderEvent[];
 }

@@ -1,6 +1,6 @@
 # Restaurant — Project Roadmap
 
-> **Cập nhật lần cuối:** 2026-05-05
+> **Cập nhật lần cuối:** 2026-05-26
 > **Phạm vi:** Hệ thống vận hành **một quán ăn** — gọi món qua QR tại bàn
 
 ---
@@ -12,7 +12,7 @@ Khách ngồi xuống, scan QR tại bàn và chọn 1 trong 2 hình thức:
 - **Combo / Buffet** — trả một lần cố định, gọi các món nằm trong combo đó (có hoặc không giới hạn số lượng theo combo)
 - **Gọi món (Per item)** — gọi món nào tính tiền món đó
 
-Cùng một bàn có thể vừa mua combo vừa gọi thêm món ngoài combo. Bếp nhận đơn realtime. Thu ngân xuất bill cuối phiên.
+Cùng một bàn có thể vừa mua combo vừa gọi thêm món ngoài combo. Bếp và nhân viên nhận đơn realtime. Thu ngân xuất bill cuối phiên.
 
 ---
 
@@ -87,20 +87,23 @@ Cùng một bàn có thể vừa mua combo vừa gọi thêm món ngoài combo. 
 - [ ] Khách mua combo → app hiển thị đúng danh sách món được gọi trong combo
 - [ ] Gọi món trong combo → không tính tiền thêm (trừ khi vượt giới hạn)
 - [ ] Khi gọi vượt giới hạn → tự động chuyển sang tính tiền à la carte
+- [ ] Trạng thái món combo: `Requested → Served` (không qua bước `Cooking` vì món đã chuẩn bị sẵn)
 
 **Luồng per item:**
 - [ ] Gọi món bất kỳ trong menu → tính tiền từng món
+- [ ] Trạng thái món gọi lẻ: `Pending → Confirmed → Cooking → Served`
 
 **Chung:**
-- [ ] WebSocket đẩy đơn về bếp ngay lập tức
-- [ ] Trạng thái: `Pending → Confirmed → Cooking → Served`
-- [ ] Khách theo dõi trạng thái realtime
+- [ ] WebSocket đẩy order realtime tới bếp hoặc nhân viên phụ trách
+- [ ] Khách theo dõi trạng thái realtime theo từng loại order (combo hoặc gọi lẻ)
 - [ ] Nhân viên tạo order thay khách
 
 ### Kitchen Display (KDS)
 
 - [ ] Nhận đơn mới realtime, hiển thị bàn + ghi chú
-- [ ] Bấm đổi trạng thái từng món / đơn
+- [ ] Món combo hiển thị như hàng đợi món cần mang ra, không đi qua trạng thái `Cooking`
+- [ ] Món gọi lẻ hiển thị trên KDS với luồng trạng thái bếp đầy đủ
+- [ ] Bấm đổi trạng thái phù hợp theo từng loại món / đơn (combo: xác nhận đã phục vụ, gọi lẻ: cập nhật trạng thái bếp)
 - [ ] Cảnh báo đơn chờ quá 10 phút
 
 ### Billing
@@ -148,3 +151,4 @@ Cùng một bàn có thể vừa mua combo vừa gọi thêm món ngoài combo. 
 | 2026-05-05 | Khởi tạo roadmap cho quán ăn gọi món qua QR                          |
 | 2026-05-05 | Thêm mô hình combo/buffet + à la carte trong cùng một phiên bàn      |
 | 2026-05-06 | Mở rộng kế hoạch Auth: 6 nhóm tính năng chi tiết                     |
+| 2026-05-26 | Điều chỉnh luồng realtime: combo dùng trạng thái giao món, gọi lẻ giữ luồng bếp đầy đủ |

@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ComboItem } from '../combo_items/combo_items.entity';
+import { DiningSessionCombo } from '../dining_session_combos/dining_session_combos.entity';
 
 @Entity('combos')
 @Index(['isActive'])
@@ -38,4 +39,10 @@ export class Combo {
 
   @OneToMany(() => ComboItem, (comboItem) => comboItem.combo)
   items!: ComboItem[];
+
+  @OneToMany(
+    () => DiningSessionCombo,
+    (sessionCombo) => sessionCombo.combo,
+  )
+  sessionCombos!: DiningSessionCombo[];
 }

@@ -5,10 +5,13 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { ComboItem } from '../combo_items/combo_items.entity';
 import { MenuCategory } from '../menu-category/menu-category.entity';
+import { OrderItem } from '../order_items/order_items.entity';
 
 @Entity('menu_items')
 @Index(['categoryId'])
@@ -63,4 +66,10 @@ export class MenuItem {
   })
   @JoinColumn({ name: 'category_id' })
   category!: MenuCategory;
+
+  @OneToMany(() => ComboItem, (comboItem) => comboItem.menuItem)
+  comboItems!: ComboItem[];
+
+  @OneToMany(() => OrderItem, (orderItem) => orderItem.menuItem)
+  orderItems!: OrderItem[];
 }

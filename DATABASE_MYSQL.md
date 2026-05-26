@@ -1,6 +1,6 @@
 # MySQL Database Design
 
-> Last update: 2026-05-05
+> Last update: 2026-05-26
 > Stack: NestJS + TypeORM + MySQL 8
 > Scope: Một quán ăn — QR gọi món, hỗ trợ combo/buffet + à la carte
 
@@ -17,8 +17,9 @@
 ```sql
 role_code      : owner | manager | cashier | waiter | kitchen
 table_status   : available | occupied | reserved | disabled
-order_status   : pending | confirmed | cooking | served | cancelled
 order_type     : combo | per_item
+combo_status   : requested | served | cancelled
+per_item_status: pending | confirmed | cooking | served | cancelled
 bill_status    : open | paid | voided
 payment_method : cash | bank_transfer | qr_banking
 ```
@@ -199,10 +200,12 @@ Một lần gọi món trong phiên bàn.
 | order_type          | enum(order_type)    | combo hoặc per_item                           |
 | session_combo_id    | varchar(36) FK → dining_session_combos.id | nullable — chỉ điền nếu order_type = combo |
 | created_by_user_id  | varchar(36) FK → users.id | nullable                          |
-| status              | enum(order_status)  | default pending                               |
+| status              | varchar(20)         | trạng thái tổng hợp để query nhanh; combo: `requested/served/cancelled`, per_item: `pending/confirmed/cooking/served/cancelled` |
 | note                | text                | nullable                                      |
 | created_at          | datetime            |                                               |
 | updated_at          | datetime            |                                               |
+
+> Ghi chú: trạng thái thực tế nên theo `order_items.status`; `orders.status` là trạng thái tổng hợp của cả lần gọi món.
 
 ### order_items
 
@@ -216,15 +219,18 @@ Một lần gọi món trong phiên bàn.
 | qty                   | int            |                                                      |
 | is_covered_by_combo   | boolean        | true = nằm trong combo, false = tính tiền riêng       |
 | note                  | text           | nullable                                             |
-| status                | enum(order_status) | default pending                                  |
+| status                | varchar(20)    | combo: mặc định `requested`; per_item: mặc định `pending` |
 | created_at            | datetime       |                                                      |
 
 ### order_events
+
+Lưu lịch sử đổi trạng thái. Ưu tiên log theo từng món để khớp KDS/realtime.
 
 | Column              | Type           | Ghi chú       |
 | ------------------- | -------------- | ------------- |
 | id                  | varchar(36) PK |               |
 | order_id            | varchar(36) FK → orders.id |   |
+| order_item_id       | varchar(36) FK → order_items.id | nullable — nên điền khi đổi trạng thái từng món |
 | from_status         | varchar(20)    | nullable      |
 | to_status           | varchar(20)    |               |
 | changed_by_user_id  | varchar(36) FK → users.id | nullable |
@@ -328,7 +334,7 @@ tables ──── guest_sessions
             ├── orders ─┘                         │
             │   (order_type: combo|per_item)      │
             │          └── order_items            │
-            │              (is_covered_by_combo)  │
+            │              (is_covered_by_combo, item status) │
             │              └── order_events       │
             │                                     │
             ├── bills ────────────────────────────┘
@@ -352,6 +358,13 @@ Khi khách gọi món thuộc combo:
 4. Nếu `qty_limit` có giá trị → đếm `order_items` đã gọi món này trong phiên × person_count
    - Còn quota → `is_covered_by_combo = true`
    - Hết quota → `is_covered_by_combo = false`, tính giá à la carte
+
+## Logic trạng thái order (application layer)
+
+- `order_type = combo`: món đi theo luồng `requested → served` vì là món đã chuẩn bị sẵn, không qua `cooking`
+- `order_type = per_item`: món đi theo luồng `pending → confirmed → cooking → served`
+- `order_items.status` là nguồn sự thật cho realtime/KDS
+- `orders.status` được suy ra từ toàn bộ `order_items` để phục vụ filter và query nhanh
 
 ---
 
@@ -382,6 +395,7 @@ dining_sessions         : table_id + is_active
 dining_session_combos   : dining_session_id, expires_at
 orders                  : dining_session_id + status, session_combo_id
 order_items             : order_id + status, is_covered_by_combo
+order_events            : order_id, order_item_id, changed_at
 bills                   : dining_session_id, status
 service_calls           : table_id + status
 coupons                 : code, is_active
