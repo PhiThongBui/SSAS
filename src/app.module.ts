@@ -11,6 +11,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { TablesModule } from './modules/tables/tables.module';
 import { MenuModule } from './modules/menu/menu.module';
 import { MenuCategoryModule } from './modules/menu-category/menu-category.module';
+import { CombosModule } from './modules/combos/combos.module';
+import { ComboItemsModule } from './modules/combo_items/combo_items.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { MenuCategoryModule } from './modules/menu-category/menu-category.module
     TablesModule,
     MenuCategoryModule,
     MenuModule,
+    CombosModule,
+    ComboItemsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

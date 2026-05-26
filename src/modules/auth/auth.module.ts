@@ -18,7 +18,7 @@ import { GuestAuthGuard } from './guards/guest-auth.guard';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '15m' },
+        signOptions: { expiresIn: config.get<number>('EXPIRES_IN') },
       }),
     }),
     UsersModule,

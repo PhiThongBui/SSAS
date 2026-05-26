@@ -193,7 +193,7 @@ export class MenuService {
     return item;
   }
 
-  private async findActiveItemOrFail(id: string): Promise<MenuItem> {
+  async findActiveItemOrFail(id: string): Promise<MenuItem> {
     const item = await this.itemRepo.findOne({
       where: { id, isActive: true },
     });

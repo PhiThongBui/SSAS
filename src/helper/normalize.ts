@@ -66,3 +66,30 @@ export function normalizeBoolean(value: unknown, field: string): boolean {
 
   return value;
 }
+
+export function normalizeValidHours(value: unknown): number | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    throw new BadRequestException('validHours must be a positive integer');
+  }
+
+  return value;
+}
+
+export function normalizeNullablePositiveInteger(
+  value: unknown,
+  field: string,
+): number | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    throw new BadRequestException(`${field} must be a positive integer`);
+  }
+
+  return value;
+}
